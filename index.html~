@@ -1,0 +1,718 @@
+<html>
+	<head>
+		<script type="text/javascript" src="http://code.jquery.com/jquery-1.10.2.min.js"></script>
+		<script type="text/javascript" src="http://raphaeljs.com/raphael.js"></script>
+		<script type="text/javascript" src="js/fraphael.js"></script>
+	</head>
+	<body>
+		<div id="holder"></div>
+	</body>
+	<script>
+		function Moon(canvas, attr) {
+			if(!(canvas instanceof Raphael))  {
+				throw "canvas must be instance of raphael";
+			}
+			
+			attr = attr || {};
+			
+			var cx = attr.cx || 0,
+				cy = attr.cy || 0,
+				group = canvas.set(),
+				r = 7;
+
+			this.activeColor = "#b3b3b3";
+			this.passiveColor = "#2a2a2b";
+
+			var flt = canvas.createFilter();
+			flt.addEffect("feGaussianBlur", {
+				"in": "SourceAlpha",
+				"stdDeviation": "1",
+				"result": "blur",
+			});
+
+			flt.addEffect("feOffset", {
+				"in": "blur",
+				"dx": "0",
+				"dy": "1",
+				"result": "offset",
+			});
+
+			flt.addEffect("feFlood", {
+				"flood-color": "#000",
+				"flood-opacity": "0.7",
+				"result": "flood",
+			});
+
+			flt.addEffect("feComposite", {
+				"in": "flood",
+				"in2": "offset",
+				"operator": "in",
+				"result": "blackOffset",
+			});
+
+			flt.addEffect("feComposite", {
+				"in": "SourceGraphic",
+				"in2": "blackOffset",
+				"operator": "over",
+			});
+
+			this.moon = canvas.path([
+				"M ",
+				0,
+				",",
+				0 + r, 
+				" a ",
+				r,
+				",",
+				r,
+				" 1 ",
+				" 1,1 ",
+				0.00001,
+				", ",
+				0,
+				" z",
+				" M ",
+				0,
+				", ",
+				0 - r + 2,
+				" a ",
+				r-2,
+				",",
+				r-2,
+				" 1 1,0 ",
+			       	0,
+				",",
+				2 * r - 4,
+				" z "
+			].join("")).attr({"stroke-width": "0", 'fill-rule': 'nonzero'}).filter(flt);
+			group.push(this.moon);
+			group.push(canvas.text(0 - 20, 0, "PM").attr({"font-size": "18px", "text-anchor": "end"}).filter(flt));
+			group.transform("t " + cx + "," + cy);
+
+
+
+
+
+			this.setActive = function() {
+				group.attr({
+					fill: this.activeColor,
+				});
+			}
+
+			this.setPassive = function() {
+				group.attr({
+					fill: this.passiveColor,
+				});
+			}
+		};
+
+		function Sun(canvas, attr) {
+			if(!(canvas instanceof Raphael))  {
+				throw "canvas must be instance of raphael";
+			}
+			
+			attr = attr || {};
+			
+			var cx = attr.cx || 0,
+				cy = attr.cy || 0,
+				group = canvas.set();
+
+			this.activeColor = "#b3b3b3";
+			this.passiveColor = "#2a2a2b";
+
+			var flt = canvas.createFilter();
+			flt.addEffect("feGaussianBlur", {
+				"in": "SourceAlpha",
+				"stdDeviation": "1",
+				"result": "blur",
+			});
+
+			flt.addEffect("feOffset", {
+				"in": "blur",
+				"dx": "0",
+				"dy": "1",
+				"result": "offset",
+			});
+
+			flt.addEffect("feFlood", {
+				"flood-color": "#000",
+				"flood-opacity": "0.7",
+				"result": "flood",
+			});
+
+			flt.addEffect("feComposite", {
+				"in": "flood",
+				"in2": "offset",
+				"operator": "in",
+				"result": "blackOffset",
+			});
+
+			flt.addEffect("feComposite", {
+				"in": "SourceGraphic",
+				"in2": "blackOffset",
+				"operator": "over",
+			});
+
+
+			var circle = canvas.circle(cx, cy, 4.05).filter(flt);
+			group.push(circle);
+
+			var rectHeight = 3.13,
+				rectWidth = 1.94;
+
+			var rect = canvas.rect(cx - rectWidth / 2, cy - 8, rectWidth, rectHeight).filter(flt);
+			group.push(rect);
+
+			for(i = 1; i < 8; i++) {
+				group.push(rect.clone().transform([
+					"R ",
+					i * 45,
+					",",
+					cx,
+					",",
+					cy,
+				].join("")).filter(flt));
+			}
+
+			group.attr({
+				"stroke-width": "0",
+			});
+
+			group.push(canvas.text(cx + 20, cy, "AM").attr({"font-size": "18px", "text-anchor": "start"}).filter(flt));
+
+
+			this.setActive = function() {
+				group.attr({
+					fill: this.activeColor,
+				});
+			}
+
+			this.setPassive = function() {
+				group.attr({
+					fill: this.passiveColor,
+				});
+			}
+		};
+
+		function TextFilter(canvas) {
+			if(!(canvas instanceof Raphael))  {
+				throw "canvas must be instance of raphael";
+			}
+
+			var flt = canvas.createFilter();
+			flt.addEffect("feGaussianBlur", {
+				"in": "SourceAlpha",
+				"stdDeviation": "1",
+				"result": "blur",
+			});
+
+			flt.addEffect("feOffset", {
+				"in": "blur",
+				"dx": "0",
+				"dy": "1",
+				"result": "offset",
+			});
+
+			flt.addEffect("feComposite", {
+				"in": "SourceGraphic",
+				"in2": "offset",
+				"operator": "over",
+			});
+
+			return flt;
+		}
+
+		function ProgressBar(canvas, attr) {
+			/*
+				attr:
+					width
+					height
+					x - left side
+					y - upper side
+			*/
+			if(!(canvas instanceof Raphael))  {
+				throw "canvas must be instance of raphael";
+			}
+			attr = attr || {};
+			var width = attr.width || 100,
+				height = attr.height || 20,
+				x = attr.x || 0,
+				y = attr.y || 0;
+
+			var rect = canvas.rect(x, y, width, height);
+			rect.attr({
+				"stroke-width": "0",
+				"fill": "#cd4f4f",
+			});
+
+			var flt = canvas.createFilter();
+			flt.addEffect("feOffset", {
+				"in": "SourceAlpha",
+				"dx": "0",
+				"dy": "1",
+				"result": "offset",
+			});
+
+			flt.addEffect("feComposite", {
+				"in": "SourceAlpha",
+				"in2": "offset",
+				"operator": "arithmetic",
+				"k1": "0",
+				"k2": "1",
+				"k3": "-1",
+				"k4": "0",
+				"result": "innDiff",
+			});
+
+			flt.addEffect("feFlood", {
+				'flood-color': '#fff',
+				'flood-opacity': '0.3',
+				'result': 'whiteFlood'
+			});
+
+			flt.addEffect('feComposite', {
+				'in': 'whiteFlood',
+				'in2': 'innDiff',
+				'operator': 'in',
+				'result': 'innerShadow',
+			});
+
+			flt.addEffect("feFlood", {
+				"flood-color": "#000",
+				"flood-opacity": "0.3",
+				"result": "blackFlood",
+			});
+
+			flt.addEffect("feComposite", {
+				"in": "blackFlood",
+				"in2": "offset",
+				"operator": "in",
+				"result": "rawDrop",
+			});
+
+			flt.addEffect("feComposite", {
+				"in": "SourceGraphic",
+				"in2": "rawDrop",
+				"operator": "over",
+				"result": "dropShadow",
+			});
+
+			flt.addEffect("feComposite", {
+				"in": "innerShadow",
+				"in2": "dropShadow",
+				"operator": "over",
+				"result": "final",
+			});
+
+			rect.filter(flt);
+
+			this.width = function(newWidth) {
+				rect.attr('width', newWidth);
+			}
+
+			this.animate = function(newWidth) {
+				rect.animate({ width: newWidth }, 500);
+			}
+		}
+
+		function ProgressBackground(canvas, attr){
+			/*
+				attr:
+					width
+					height
+					x - left side
+					y - upper side
+			*/
+			if(!(canvas instanceof Raphael))  {
+				throw "canvas must be instance of raphael";
+			}
+
+			var width = attr.width || 100,
+				height = attr.height || 20,
+				x = attr.x || 0,
+				y = attr.y || 0;
+
+			var backRect = canvas.rect(x, y, width, height);
+			backRect.attr({
+				"stroke-width": "0",
+				"fill": "#2f2f30",
+			});
+
+			/* filters */
+
+			var flt = canvas.createFilter();
+			flt.addEffect("feOffset", {
+				"in": "SourceAlpha",
+				"dx": "0",
+				"dy": "-1",
+				"result": "offset",
+			});
+
+			flt.addEffect("feComposite", {
+				"in": "SourceAlpha",
+				"in2": "offset",
+				"operator": "arithmetic",
+				"k1": "0",
+				"k2": "1",
+				"k3": "-1",
+				"k4": "0",
+				"result": "innDiff",
+			});
+
+			flt.addEffect("feFlood", {
+				"flood-color": "#fff",
+				"flood-opacity": "0.1",
+				"result": "flood",
+			});
+
+			flt.addEffect("feComposite", {
+				"in": "flood",
+				"in2": "innDiff",
+				"operator": "in",
+				"result": "innerShadow"
+			});
+
+			flt.addEffect("feFlood", {
+				"flood-color": "#000",
+				"flood-opacity": "0.3",
+				"result": "blackFlood",
+			});
+
+			flt.addEffect("feComposite", {
+				"in": "blackFlood",
+				"in2": "offset",
+				"operator": "in",
+				"result": "blackDrop",
+			});
+
+			flt.addEffect("feComposite", {
+				"in": "SourceGraphic",
+				"in2": "blackDrop",
+				"operator": "over",
+				"result": "dropShadow",
+			});
+
+			flt.addEffect("feComposite", {
+				"in": "innerShadow",
+				"in2": "dropShadow",
+				"operator": "over",
+				"result": "final",
+			});
+
+			backRect.filter(flt);
+		}
+		function Rule(canvas, labels, params) {
+			/*
+				canvas - raphael instance
+				labels - an array with text elements and null(for line)
+					e.g ['0', null, null, 'a', null, null, '10'] mean 0 | | a | | 10
+				params - an object that contain
+					startX - relative to baseline
+					startY - relative to baseline
+					width
+					font-size
+			*/
+
+			if(!(canvas instanceof Raphael)) {
+				throw "canvas must be a raphael instance";
+			}
+
+			params = params || {};
+			var width = params.width || 100,
+				startX = params.x || 0,
+				startY = params.y || 0,
+				fontSize = params['font-size'] || 16,
+				fill = params['fill'] || '#b3b3b3',
+				lineHeight = 0.6 * fontSize,
+				dx = width / (labels.length - 1),
+				label,
+				x;
+
+
+			for(var i = 0; i < labels.length ; i++) {
+				label = labels[i];	
+				x = startX + i * dx;
+				if(label === null) {
+					canvas.path(["M ", x, ",", startY + 0.5 * lineHeight, " l 0", -lineHeight].join(""))
+						.attr({"stroke-width": "1", "stroke": "#fff"})
+				} else {
+					/* draw text */
+					canvas.text(x, startY, label).attr({
+						'font-size': fontSize + "px",
+						'fill': fill,
+						'text-anchor': 'middle',
+					}).filter(TextFilter(canvas));
+
+				}
+			}
+		}
+
+		function PanelFilter(canvas) {
+			if(!(canvas instanceof Raphael)) {
+				throw "canvas must be a raphael instance";
+			}
+
+			var filter = canvas.createFilter();
+
+			filter.addEffect('feOffset', {
+				"in": "SourceAlpha",
+				"dy": "1",
+				"dx": "0",
+				"result": "offset",
+			});
+
+			filter.addEffect("feComposite", {
+				"in": "SourceAlpha",
+				"in2": "offset",
+				"operator": "arithmetic",
+				"k1": "0",
+				"k2": "1",
+				"k3": "-1",
+				"k4": "0",
+				"result": "diff",
+			});
+
+			filter.addEffect("feFlood", {
+				"flood-color": "#fff",
+				"flood-opacity": "0.2",
+				"result": "whiteflood",
+			});
+			
+			filter.addEffect("feComposite", {
+				"in": "whiteflood",
+				"in2": "diff",
+				"operator": "in",
+				"result": "innerShadow",
+			});
+
+			filter.addEffect("feGaussianBlur", {
+				"in": "SourceAlpha",
+				"stdDeviation": "3",
+				"result": "blur",
+			});
+
+			filter.addEffect("feOffset", {
+				"in": "blur",
+				"dx": "0",
+				"dy": "1",
+				"result": "blurOffset",
+			});
+
+			filter.addEffect("feComposite", {
+				"in": "SourceGraphic",
+				"in2": "blurOffset",
+				"operator": "over",
+				"result": "overBlur",
+			});
+
+			filter.addEffect("feComposite", {
+				"in": "innerShadow",
+				"in2": "overBlur", 
+				"operator": "over",
+			});
+
+
+			return filter;
+		}
+
+		function Clock(canvas) {
+			if(!(canvas instanceof Raphael)) {
+				throw "canvas must be a raphael instance";
+			}
+
+			var ns = "http://www.w3.org/2000/svg";
+
+			/* background */
+			var backGrId = 'backId';
+			var backGradient = document.createElementNS(ns, "radialGradient");
+			backGradient.setAttribute('id', backGrId);
+			backGradient.setAttribute('fx', '50%');
+			backGradient.setAttribute('fy', '50%');
+			backGradient.setAttribute('r', "100%");
+			backGradient.setAttribute('spreadMethod', "pad");
+
+			var stop0 = document.createElementNS(ns, "stop");
+			stop0.setAttribute("offset", "0%");
+			stop0.setAttribute("stop-color", "#393b3e");
+			stop0.setAttribute('stop-opacity', "1");
+			backGradient.appendChild(stop0);
+
+			var stop100 = document.createElementNS(ns, "stop");
+			stop100.setAttribute("offset", "100%");
+			stop100.setAttribute("stop-color", "#434548");
+			stop100.setAttribute('stop-opacity', "1");
+			backGradient.appendChild(stop100);
+
+			canvas.defs.appendChild(backGradient);
+
+			var backHeight = 600,
+				backWidth = 800,
+				background = canvas.rect(0, 0, backWidth, backHeight);
+			background.node.setAttribute("fill", "url(#"+backGrId+")");
+
+			/* panel */
+			var panelHeight = 350,  
+				panelWidth = 440,
+				panelX = 183,
+				panelY = 137;
+
+			var panelGrId = 'panelGrId';
+			var panelLinGr = document.createElementNS(ns, "linearGradient");
+			panelLinGr.setAttribute("id", panelGrId);
+			panelLinGr.setAttribute("x1", "0%");
+			panelLinGr.setAttribute("y1", "0%");
+			panelLinGr.setAttribute("x2", "0%");
+			panelLinGr.setAttribute("y2", "100%");
+			panelLinGr.setAttribute("spreadMethod", "pad");
+			canvas.defs.appendChild(panelLinGr);
+
+			var panelStop0 = document.createElementNS(ns, "stop");
+			panelStop0.setAttribute("offset", "0%");
+			panelStop0.setAttribute("stop-color", "#363638");
+			panelStop0.setAttribute("stop-opacity", "1");
+			panelLinGr.appendChild(panelStop0);
+
+			var panelStop100 = document.createElementNS(ns, "stop");
+			panelStop100.setAttribute("offset", "100%");
+			panelStop100.setAttribute("stop-color", "#313234");
+			panelStop0.setAttribute("stop-opacity", "1");
+			panelLinGr.appendChild(panelStop100);
+
+			var panelFilter = new PanelFilter(canvas);
+			var panel = canvas.rect(panelX, panelY, panelWidth, panelHeight);
+			panel.node.setAttribute("stroke-width", "0");
+			panel.node.setAttribute("fill", "url(#" + panelGrId + ")");
+			panel.filter(panelFilter);
+
+			var width = 360, x = 218, yLine = 202;
+
+			/* lines */
+			canvas.path([
+				"M ",
+				x,
+				",",
+				yLine,
+				" l ",
+				width,
+				",",
+				"0",
+			].join(""))
+				.attr({
+					"stroke-width": "1",
+					"stroke": "#232324",
+				});
+			canvas.path([
+				"M ",
+				x,
+				",",
+				yLine + 1,
+				" l ",
+				width,
+				",",
+				"0",
+			].join(""))
+				.attr({
+					"stroke-width": "1",
+					"stroke": "#444445",
+				});
+
+			/* title text */
+			canvas.text(348, 176, "BARCLOCK").attr({
+				"font-size": "24px",
+				"fill": "#b3b3b3",
+				"text-anchor": "start",
+			}).filter(TextFilter(canvas));
+
+			/* hours elements */
+			var hx = x, hy = 244, hwidth = width, dyBack = 18, hourH = 18, hProgressHeight = 16;
+			new Rule(canvas, ['0', null, '2', null, '4', null, '6', null, '8', null, '10', null, 'H'], {
+				x: hx,
+				y: hy,
+				width: hwidth,
+				"font-size": 16,
+			});
+
+			new ProgressBackground(canvas, {x: hx, y: hy + dyBack, width: hwidth, height: hourH});
+			var hourProgress = new ProgressBar(canvas, {x: hx, y: hy + dyBack, height: hProgressHeight, width : 0.1});
+			this.setHour = function (hour) {
+				hourProgress.width(hour * hwidth / 12);
+			};
+
+			/* minutes elements */
+			var mx = hx, my = hy + 75, minuteH = 14.33, mProgressHeight = 12.33;
+			new Rule(canvas, ['0', null, null, '15', null, null, '30', null, null, '45', null, null, 'M'], {
+				x: mx,
+				y: my,
+				width: hwidth,
+				"font-size": 16,
+			});
+
+			new ProgressBackground(canvas, {x: mx, y: my + dyBack, width: hwidth, height: minuteH});
+			var minuteProgress = new ProgressBar(canvas, {x: hx, y: my + dyBack, height: mProgressHeight, width : 0.1});
+
+			this.setMinute = function(minute) {
+				minuteProgress.width(minute * width / 60);
+			}
+
+			/* seconds elements */
+			var sx = hx, sy = my + 75, secondH = 10, sProgressHeight = 8;
+			new Rule(canvas, ['0', null, null, null, '20', null, null, null, '40', null, null,  null,  'S'], {
+				x: sx,
+				y: sy,
+				width: hwidth,
+				"font-size": 16,
+			});
+
+			new ProgressBackground(canvas, {x: sx, y: sy + dyBack, width: hwidth, height: secondH});
+			var secondProgress = new ProgressBar(canvas, {x: hx, y: sy + dyBack, height: sProgressHeight, width : 0.1});
+			this.setSecond = function(second) {
+				secondProgress.width(second * width / 60);
+			}
+
+			this.sun = new Sun(canvas, {cx: 230, cy: 451});
+			this.moon = new Moon(canvas, {cx: 574, cy: 451});
+
+			/* init block */
+			var date = new Date;
+			if(date.getHours() < 12) {
+				this.sun.setActive();
+			} else {
+				this.moon.setActive();
+			}
+			hourProgress.animate((date.getHours() % 12) * hwidth / 12);
+			minuteProgress.animate( date.getMinutes() * hwidth / 60);
+			secondProgress.animate( date.getSeconds() * hwidth / 60);
+
+
+			var that = this;
+			setInterval(function() {
+				that.setTime();
+			}, 1000);
+		}
+
+		Clock.prototype = {
+			setTime: function() {
+				var date = new Date();
+				this.setSecond(date.getSeconds());
+				this.setMinute(date.getMinutes());
+
+				var hour = date.getHours();
+				this.setHour(hour % 12);
+				if(hour <= 12) {
+					this.sun.setActive();
+					this.moon.setPassive();
+				} else {
+					this.sun.setPassive();
+					this.moon.setActive();
+				}
+			}
+		};
+
+		var canvWidth = 800, canvHeight = 600;
+		var paper = Raphael("holder", canvWidth, canvHeight);
+
+		var clock = new Clock(paper);
+
+		//new Moon(paper, {cx: 50, cy: 50});
+	</script>
+</html>
